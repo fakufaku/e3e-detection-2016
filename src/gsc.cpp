@@ -62,8 +62,12 @@ GSC::GSC(
   assert((int)w.size() == 2 * (this->nfft / 2 + 1) * this->nchannel);  // check the size is correct
   this->fixed_weights.setZero(this->nchannel, this->nfreq);
   for (int f = 0, offset = this->f_min_index * this->nchannel ; f < this->nfreq ; f++, offset += this->nchannel)
+  {
     for (int ch = 0 ; ch < this->nchannel ; ch++)
       this->fixed_weights(ch, f) = e3e_complex(w[2 * (offset + ch)], w[2 * (offset + ch) + 1]);
+  }
+  // Normalize the weights for the projection
+  this->fixed_weights.matrix().colwise().normalize();
   
   // Size the other buffers as needed
   this->adaptive_weights.setZero(this->nchannel_ds, this->nfreq);

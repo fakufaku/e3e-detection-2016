@@ -6,6 +6,6 @@
   "rls_reg" : 0.01,
   "pb_ff" : 0.99,
   "pb_ref_channel" : 0,
-  "high_pass_cutoff" : 150,
+  "high_pass_cutoff" : 200,
   "f_max" : 16000
 }
