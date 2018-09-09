@@ -74,7 +74,7 @@ GSC::GSC(
   this->covmat_inv.resize(this->nfreq);
   for (auto it = this->covmat_inv.begin() ; it != this->covmat_inv.end() ; ++it)
     *it = Eigen::MatrixXcf::Identity(this->nchannel_ds, this->nchannel_ds) * (1.f / this->rls_reg);
-  this->xcov = Eigen::MatrixXcf::Zero(this->nfreq, this->nchannel_ds);
+  this->xcov = Eigen::ArrayXXcf::Zero(this->nfreq, this->nchannel_ds);
 }
 
 void GSC::process(e3e_complex_vector &input, e3e_complex_vector &output)
