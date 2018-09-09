@@ -76,11 +76,17 @@ To run the code with matrix creator, one needs to install
 
 * FFTW
 * [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
+* [nolehmann/json](https://github.com/nlohmann/json)
 
 The Eigen library is distributed with the code for convenience (in
 `include/Eigen`). It is licensed under [MPL2](http://www.mozilla.org/MPL/2.0).
 For more information see the [official
 website](http://eigen.tuxfamily.org/index.php?title=Main_Page).
+
+The `nolehmann/json` header file is distributed with the code for convenience
+(in `include/json.hpp`).  It is licensed unde [MIT
+License](http://opensource.org/licenses/MIT). More information can be found on
+the official [github page](https://github.com/nlohmann/json).
 
 #### Install GCC with std14 support (v4.9)
 

@@ -16,18 +16,20 @@ class GSC
   public:
 
 
-
     // parameter attributes
+    int nfft;
     float fs;
     int nchannel;
 
     // parameters coming from config file
-    int nchannel_ds;
-    int nfft;
+    int nchannel_ds;  // number of channels after downsampling in adaptive branch
+    int ds;           // number of channels combined together for downsampling (ds = nchannel / nchannel_ds)
+    float ds_inv;     // == 1. / ds
     int nfreq;
     
     // algorithm parameters
     float rls_ff;
+    float rls_ff_inv;
     float rls_reg;
     float pb_ff;
     int pb_ref_channel;
@@ -41,9 +43,9 @@ class GSC
     Eigen::ArrayXXcf adaptive_weights; // size: (nfreq, nchannel_ds)
 
     // The intermediate buffers
-    Eigen::ArrayXcf output_fixed;  // size: (nfreq)
-    Eigen::ArrayXXcf output_null;   // size: (nfreq, nchannels_ds)
-    Eigen::ArrayXcf output_adaptive;  // size: (nfreq)
+    Eigen::ArrayXcf output_fixed;             // size: (nfreq)
+    Eigen::ArrayXXcf output_blocking_matrix;  // size: (nfreq, nchannels)
+    Eigen::ArrayXXcf input_adaptive;          // size: (nfreq, nchannels_ds)
 
     // Projection back variables
     Eigen::ArrayXcf projback_num;  // numerator, size: (nfreq), complex
@@ -51,17 +53,18 @@ class GSC
 
     // RLS variables
     std::vector<Eigen::MatrixXcf> covmat_inv;  // inverse covariance matrices, size: (nfreq, nchannel_ds, nchannel_ds)
-    Eigen::MatrixXcf xcov;                     // cross covariance vectors, size: (nfreq, nchannel_ds)
+    Eigen::ArrayXXcf xcov;                     // cross covariance vectors, size: (nfreq, nchannel_ds)
 
     GSC(
-        std::string fixed_beamformer_file,  // name of file storing the fixed beamforming weights
+        std::string fixed_beamformer_file,  // path to the configuration file
+        std::string weights_file,           // path to the file containing the fixed beamforming weights
+        int _nfft,     // the FFT size
         float fs,      // the sampling frequency
         int nchannel   // the number of input channels
        );
-    ~GSC();
 
     void process(e3e_complex_vector &input, e3e_complex_vector &output);    
-    void rls_update(e3e_complex_vector &input, e3e_complex_vector &error);
+    void rls_update(Eigen::Map<Eigen::ArrayXXcf> &input, Eigen::ArrayXcf &ref_signal);
     void projback(Eigen::Map<Eigen::ArrayXXcf> &input, Eigen::Map<Eigen::ArrayXcf> &output, int input_ref_channel);
 };
 
