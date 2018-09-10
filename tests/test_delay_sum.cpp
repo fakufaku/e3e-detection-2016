@@ -25,18 +25,18 @@ int16_t float2int = (1 << 15) - 1;
 e3e_complex_vector beamformer((NFFT / 2 + 1) * PYRAMIC_CHANNELS_IN);
 
 float delays[] = {
-  3.82790651e-05,  4.59348781e-05,  5.35906911e-05,  5.66530164e-05,
-  5.81841790e-05,  6.12465042e-05,  6.89023172e-05,  7.65581302e-05,
-  7.17732471e-05,  6.02895275e-05,  4.88058080e-05,  4.42123202e-05,
-  4.19155763e-05,  3.73220885e-05,  2.58383689e-05,  1.43546494e-05,
-  2.39244157e-05,  2.00965092e-05,  1.62686027e-05,  1.47374401e-05,
-  1.39718588e-05,  1.24406962e-05,  8.61278965e-06,  4.78488314e-06,
-  1.43546494e-05,  2.58383689e-05,  3.73220885e-05,  4.19155763e-05,
-  4.42123202e-05,  4.88058080e-05,  6.02895275e-05,  7.17732471e-05,
-  2.39244157e-05,  2.00965092e-05,  1.62686027e-05,  1.47374401e-05,
-  1.39718588e-05,  1.24406962e-05,  8.61278965e-06,  4.78488314e-06,
-  1.01643954e-20,  6.77626358e-21,  6.77626358e-21,  6.77626358e-21,
-  6.77626358e-21,  6.77626358e-21,  6.77626358e-21, -0.00000000e+00
+ 1.55827705e-04,  8.80705102e-05,  2.03133149e-05, -6.78956315e-06,
+-2.03410022e-05, -4.74438803e-05, -1.15201076e-04, -1.82958271e-04,
+-2.09217221e-04, -1.62467186e-04, -1.15717151e-04, -9.70171365e-05,
+-8.76671294e-05, -6.89671154e-05, -2.22170802e-05,  2.45329550e-05,
+ 1.91130177e-04,  1.51614960e-04,  1.12099742e-04,  9.62936547e-05,
+ 8.83906112e-05,  7.25845241e-05,  3.30693063e-05, -6.44591141e-06,
+-9.11424055e-05, -1.19384383e-04, -1.47626360e-04, -1.58923151e-04,
+-1.64571547e-04, -1.75868338e-04, -2.04110315e-04, -2.32352293e-04,
+ 2.14265249e-04,  1.93258089e-04,  1.72250929e-04,  1.63848065e-04,
+ 1.59646633e-04,  1.51243769e-04,  1.30236609e-04,  1.09229449e-04,
+ 5.98354268e-05,  4.13273692e-05,  2.28193115e-05,  1.54160884e-05,
+ 1.17144769e-05,  4.31125384e-06, -1.41968038e-05, -3.27048615e-05
 };
 
 /*************************/
@@ -46,14 +46,13 @@ float delays[] = {
 void compute_beamforming_weights()
 {
   const std::complex<float> j(0, 1);  // imaginary number
-  float pi_f = (float)M_PI;
   float denom = 1. / PYRAMIC_CHANNELS_IN;
 
   for (size_t f = 0 ; f < (NFFT / 2 + 1) ; f++)
   {
-    float f_hz = (float)f / NFFT * PYRAMIC_SAMPLERATE;
+    double f_hz = (double)f / NFFT * PYRAMIC_SAMPLERATE;
     for (size_t ch = 0 ; ch < PYRAMIC_CHANNELS_IN ; ch++)
-      beamformer[f * PYRAMIC_CHANNELS_IN + ch] = std::exp(j * 2.f * pi_f * f_hz * delays[ch]) * denom;
+      beamformer[f * PYRAMIC_CHANNELS_IN + ch] = std::exp(-j * (float)(2. * M_PI * f_hz * delays[ch])) * denom;
   }
 }
 
@@ -85,13 +84,10 @@ void processing(buffer_t &input, buffer_t &output)
   // Copy the first two input channels to the output
   for (size_t n = 1 ; n < NFFT / 2 ; n++)
   {
-    // The last microphone is not delayed, simply copy
-    engine_out.freq_buffer[n] = spectrum_in[PYRAMIC_CHANNELS_IN * n + PYRAMIC_CHANNELS_IN - 1];
-
     // now apply delay and sum the other channels
-    for (size_t ch = 0 ; ch < PYRAMIC_CHANNELS_IN - 1 ; ch++)
+    for (size_t ch = 0 ; ch < PYRAMIC_CHANNELS_IN ; ch++)
       engine_out.freq_buffer[n] =
-        (beamformer[PYRAMIC_CHANNELS_IN * n + ch] * spectrum_in[PYRAMIC_CHANNELS_IN * n + ch]);
+        (std::conj(beamformer[PYRAMIC_CHANNELS_IN * n + ch]) * spectrum_in[PYRAMIC_CHANNELS_IN * n + ch]);
   }
 
   engine_out.synthesis(buffer_out);

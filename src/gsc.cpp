@@ -1,6 +1,7 @@
 #include <fstream>
 #include <cmath>
 #include <assert.h>
+#include <iostream>
 
 #include "json.hpp"
 #include "gsc.h"
@@ -22,6 +23,8 @@ GSC::GSC(
   i >> config;
   i.close();
 
+  std::cout << "Finished reading config file" << std::endl << std::flush;
+
   // assign parameters to object attributes
   this->nchannel_ds = config.at("nchannel_ds").get<int>();
   this->ds = this->nchannel / this->nchannel_ds;
@@ -37,7 +40,7 @@ GSC::GSC(
   // Limit frequencies
   this->f_max = config.at("f_max").get<float>();
   this->f_min_index = 1;  // we skip the DC component in the processing
-  this->f_max_index = int(ceilf(this->f_max / this->fs + 0.5)); // round to closest bin
+  this->f_max_index = int(ceilf((this->f_max / this->fs) * this->nfft + 0.5)); // round to closest bin
   this->nfreq = this->f_max_index - this->f_min_index;  // only consider the number of bands processed
 
   // Read the file that contains the weights
@@ -45,6 +48,8 @@ GSC::GSC(
   json j_weights;
   f_weights >> j_weights;
   f_weights.close();
+
+  std::cout << "Finished reading weights" << std::endl << std::flush;
 
   // Get the fixed weights from the json file, the complex numbers are stored
   // with real/imag parts interleaved i.e. [r0, i0, r1, i1, r2,  ...]
@@ -57,7 +62,7 @@ GSC::GSC(
       this->fixed_weights(f, ch) = e3e_complex(w[2 * (offset + ch)], w[2 * (offset + ch) + 1]);
   
   // Size the other buffers as needed
-  this->adaptive_weights = Eigen::ArrayXXcf::Zero(this->nfreq, this->nchannel);
+  this->adaptive_weights = Eigen::ArrayXXcf::Zero(this->nfreq, this->nchannel_ds);
 
   // Intermediate buffers
   this->output_fixed = Eigen::ArrayXcf::Zero(this->nfreq);
@@ -71,10 +76,18 @@ GSC::GSC(
   this->projback_den = 1.f;
 
   // RLS variables
-  this->covmat_inv.resize(this->nfreq);
-  for (auto it = this->covmat_inv.begin() ; it != this->covmat_inv.end() ; ++it)
-    *it = Eigen::MatrixXcf::Identity(this->nchannel_ds, this->nchannel_ds) * (1.f / this->rls_reg);
+  this->covmat_inv.resize(this->nfreq * this->nchannel_ds, this->nchannel_ds);
+  for (int f = 0 ; f < this->nfreq ; f++)
+  {
+    auto Rinv = this->covmat_inv.block(f * this->nchannel_ds, 0, this->nchannel_ds, this->nchannel_ds);
+    Rinv.setIdentity(this->nchannel_ds, this->nchannel_ds);
+    Rinv *= (1.f / this->rls_reg);
+  }
+  std::cout << "The first cov mat: " << this->covmat_inv.block(0, 0, this->nchannel_ds, this->nchannel_ds) << std::endl;
+
   this->xcov = Eigen::ArrayXXcf::Zero(this->nfreq, this->nchannel_ds);
+
+  std::cout << "Finished initialization of GSC object." << std::endl << std::flush;
 }
 
 void GSC::process(e3e_complex *input, e3e_complex *output)
@@ -87,28 +100,35 @@ void GSC::process(e3e_complex *input, e3e_complex *output)
   int input_offset = this->f_min_index * this->nchannel;
   Eigen::Map<Eigen::ArrayXXcf> X(&input[input_offset], this->nfreq, this->nchannel);
   Eigen::Map<Eigen::ArrayXcf> Y(&output[this->f_min_index], this->nfreq);
+  //std::cout << "Process: wrapped input and output." << std::endl << std::flush;
 
   // Compute the fixed beamformer output
   this->output_fixed = (this->fixed_weights.conjugate() * X).rowwise().sum();
+  //std::cout << "Process: computed fixed beamforming." << std::endl << std::flush;
 
   // Apply the blocking matrix
   this->output_blocking_matrix = X - this->fixed_weights.colwise() * this->output_fixed;
+  //std::cout << "Process: Applied blocking matrix." << std::endl << std::flush;
 
   // Downsample the channels to a reasonnable number
   for (int c = 0, offset = 0 ; c < this->nchannel_ds ; c++, offset += this->ds)
     this->input_adaptive.col(c) = this->output_blocking_matrix.block(0, offset, this->nfreq, this->ds).rowwise().sum() * this->ds_inv;
+  //std::cout << "Process: downsampling of number of channels." << std::endl << std::flush;
 
   // Update the adaptive weights
-  this->rls_update(X, this->output_fixed);
+  this->rls_update(input_adaptive, this->output_fixed);
+  //std::cout << "Process: RLS update done." << std::endl << std::flush;
 
   // Compute the output signal
   Y = this->output_fixed - (this->adaptive_weights.conjugate() * this->input_adaptive).rowwise().sum();
+  //std::cout << "Process: computed output signal." << std::endl << std::flush;
 
   // projection back: apply scale to match the output to channel 1
   this->projback(X, Y, this->pb_ref_channel);
+  //std::cout << "Process: projection back done." << std::endl << std::flush;
 }
 
-void GSC::rls_update(Eigen::Map<Eigen::ArrayXXcf> &input, Eigen::ArrayXcf &ref_signal)
+void GSC::rls_update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal)
 {
   /*
    * Updates the inverse covariance matrix and cross-covariance vector.
@@ -120,18 +140,26 @@ void GSC::rls_update(Eigen::Map<Eigen::ArrayXXcf> &input, Eigen::ArrayXcf &ref_s
 
   // Update cross-covariance vector
   this->xcov = this->rls_ff * this->xcov + input.colwise() * ref_signal.conjugate();
+  //std::cout << "  RLS: cross-covariance done." << std::endl << std::flush;
 
   // The rest needs to be done frequency wise
-  for (int f = 0 ; f <= this->nfreq ; f++)
+  for (int f = 0 ; f < this->nfreq ; f++)
   {
+    //std::cout << "  RLS: freq = " << f << std::endl << std::flush;
     // Update covariance matrix using Sherman-Morrison Identity
-    Eigen::MatrixXcf &Rinv = this->covmat_inv[f];
+    auto Rinv = this->covmat_inv.block(f * this->nchannel_ds, 0, this->nchannel_ds, this->nchannel_ds);
+    //std::cout << "  RLS: Inv covmat: access." << std::endl << std::flush;
+    //std::cout << "  RLS: lhs.cols() = " << Rinv.cols() << " rhs.rows() = " << input.matrix().row(f).transpose().rows() << std::endl << std::flush;
     Eigen::VectorXcf u = Rinv * input.matrix().row(f).transpose();
+    //std::cout << "  RLS: Inv covmat: mat-vec." << std::endl << std::flush;
     float v = 1. / (this->rls_ff + (input.matrix().row(f).conjugate() * u).real()(0,0)); // the denominator is a real number
+    //std::cout << "  RLS: Inv covmat: den." << std::endl << std::flush;
     Rinv = this->rls_ff_inv * (Rinv - (v * u * u.adjoint()));
+    //std::cout << "  RLS: Inv covmat: update." << std::endl << std::flush;
     
     // Multiply the two to obtain the new adaptive weight vector
     this->adaptive_weights.row(f) = Rinv * this->xcov.matrix().row(f).transpose();
+    //std::cout << "  RLS: weights: update." << std::endl << std::flush;
   }
 }
 

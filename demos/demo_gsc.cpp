@@ -13,7 +13,8 @@
 #define NFFT (2 * NUM_SAMPLES)
 
 #define GSC_FILE_CONFIG "config/demo_gsc.json"
-#define GSC_FILE_WEIGHTS "config/demo_gsc_weights.json"
+//#define GSC_FILE_WEIGHTS "config/demo_gsc_weights.json"
+#define GSC_FILE_WEIGHTS "config/weights_delay_sum.json"
 
 /*******************/
 /* GLOBAL VARS ETC */
@@ -21,7 +22,7 @@
 
 STFT engine_in(NUM_SAMPLES, NFFT, 0, 0, PYRAMIC_CHANNELS_IN, STFT_WINDOW_BOTH);
 STFT engine_out(NUM_SAMPLES, NFFT, 0, 0, 1, STFT_WINDOW_BOTH);  // single output channel
-GSC gsc(GSC_FILE_CONFIG, "config/demo_gsc_weights.json", NFFT, PYRAMIC_SAMPLERATE, PYRAMIC_CHANNELS_IN);
+GSC gsc(GSC_FILE_CONFIG, GSC_FILE_WEIGHTS, NFFT, PYRAMIC_SAMPLERATE, PYRAMIC_CHANNELS_IN);
 float buffer_in[NUM_SAMPLES * PYRAMIC_CHANNELS_IN] = {0};
 float buffer_out[NUM_SAMPLES] = {0};
 float int2float = 1. / (1 << 15);

@@ -52,7 +52,7 @@ class GSC
     Eigen::ArrayXf projback_den;  // denominator, size: (nfreq), real-valued
 
     // RLS variables
-    std::vector<Eigen::MatrixXcf> covmat_inv;  // inverse covariance matrices, size: (nfreq, nchannel_ds, nchannel_ds)
+    Eigen::MatrixXcf covmat_inv;  // inverse covariance matrices, size: (nfreq * nchannel_ds, nchannel_ds), all matrices are stacked
     Eigen::ArrayXXcf xcov;                     // cross covariance vectors, size: (nfreq, nchannel_ds)
 
     GSC(
@@ -64,7 +64,7 @@ class GSC
        );
 
     void process(e3e_complex *input, e3e_complex *output);    
-    void rls_update(Eigen::Map<Eigen::ArrayXXcf> &input, Eigen::ArrayXcf &ref_signal);
+    void rls_update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal);
     void projback(Eigen::Map<Eigen::ArrayXXcf> &input, Eigen::Map<Eigen::ArrayXcf> &output, int input_ref_channel);
 };
 

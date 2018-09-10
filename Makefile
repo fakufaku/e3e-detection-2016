@@ -35,7 +35,7 @@ $(TESTS): $(OBJECTS)
 
 $(DEMOS): $(OBJECTS)
 	mkdir -p bin
-	$(CC) demos/$@.cpp -o tests/bin/$@ $^ $(LDFLAGS) $(INC) $(LIB) $(CPPFLAGS)
+	$(CC) demos/$@.cpp -o bin/$@ $^ $(LDFLAGS) $(INC) $(LIB) $(CPPFLAGS)
 
 objects: $(OBJECTS)
 tests: $(TESTS)
