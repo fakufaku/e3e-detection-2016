@@ -63,7 +63,7 @@ class GSC
         int nchannel   // the number of input channels
        );
 
-    void process(e3e_complex_vector &input, e3e_complex_vector &output);    
+    void process(e3e_complex *input, e3e_complex *output);    
     void rls_update(Eigen::Map<Eigen::ArrayXXcf> &input, Eigen::ArrayXcf &ref_signal);
     void projback(Eigen::Map<Eigen::ArrayXXcf> &input, Eigen::Map<Eigen::ArrayXcf> &output, int input_ref_channel);
 };

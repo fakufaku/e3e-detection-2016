@@ -77,7 +77,7 @@ GSC::GSC(
   this->xcov = Eigen::ArrayXXcf::Zero(this->nfreq, this->nchannel_ds);
 }
 
-void GSC::process(e3e_complex_vector &input, e3e_complex_vector &output)
+void GSC::process(e3e_complex *input, e3e_complex *output)
 {
   // Pre-emptivaly zero-out the content of output buffer
   for (int f = 0 ; f < this->nchannel * (this->nfft / 2 + 1) ; f++)
