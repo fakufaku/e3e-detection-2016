@@ -22,9 +22,9 @@ float buffer_out[NUM_SAMPLES] = {0};
 float int2float = 1. / (1 << 15);
 int16_t float2int = (1 << 15) - 1;
 
-e3e_complex_vector beamformer(NUM_SAMPLES * PYRAMIC_CHANNELS_IN);
+e3e_complex_vector beamformer((NFFT / 2 + 1) * PYRAMIC_CHANNELS_IN);
 
-double delays[] = {
+float delays[] = {
   3.82790651e-05,  4.59348781e-05,  5.35906911e-05,  5.66530164e-05,
   5.81841790e-05,  6.12465042e-05,  6.89023172e-05,  7.65581302e-05,
   7.17732471e-05,  6.02895275e-05,  4.88058080e-05,  4.42123202e-05,
@@ -45,13 +45,16 @@ double delays[] = {
 
 void compute_beamforming_weights()
 {
-  const std::complex<double> j(0, 1);  // imaginary number
-  double omega = 2. * M_PI * PYRAMIC_SAMPLERATE;
-  double denom = 1. / PYRAMIC_CHANNELS_IN;
+  const std::complex<float> j(0, 1);  // imaginary number
+  float pi_f = (float)M_PI;
+  float denom = 1. / PYRAMIC_CHANNELS_IN;
 
-  for (size_t n = 0 ; n < NUM_SAMPLES ; n++)
+  for (size_t f = 0 ; f < (NFFT / 2 + 1) ; f++)
+  {
+    float f_hz = (float)f / NFFT * PYRAMIC_SAMPLERATE;
     for (size_t ch = 0 ; ch < PYRAMIC_CHANNELS_IN ; ch++)
-      beamformer[n * PYRAMIC_CHANNELS_IN + ch] = std::exp(-j * omega * delays[ch]) * denom;
+      beamformer[f * PYRAMIC_CHANNELS_IN + ch] = std::exp(j * 2.f * pi_f * f_hz * delays[ch]) * denom;
+  }
 }
 
 /*****************************/
