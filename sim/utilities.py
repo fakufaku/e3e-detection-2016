@@ -67,7 +67,11 @@ class LeakyIntegration(object):
         X: array_like
             The new data
         '''
-        self.sum = self.ff * self.sum + (1 - self.ff) * self.func(X)
+        if self.sum is None:
+            self.sum = self.func(X)
+        else:
+            #self.sum = self.ff * self.sum + (1 - self.ff) * self.func(X)
+            self.sum = self.ff * self.sum + self.func(X)
 
     def get(self):
         return self.sum

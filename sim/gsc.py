@@ -126,14 +126,13 @@ class GSC_Newton(Plottable):
 
         self.estimates = {
                 'covmat' : LeakyIntegration(
-                    0.97,  # average over this number of frames
+                    0.95,  # average over this number of frames
                     lambda X : X[:,:,None] * np.conj(X[:,None,:]),  # (nfreq, nchan, nchan),
                     init=np.array([np.eye(self.nchannel // self.ds) for i in range(self.nfft // 2)]) * 1e-3,
                     ),
                 'xcov' : LeakyIntegration(
-                    0.97,
+                    0.95,
                     lambda v : v[0] * np.conj(v[1][:,None]),
-                    init=np.zeros((self.nfft // 2, self.nchannel // self.ds))
                     ),
                 }
 
