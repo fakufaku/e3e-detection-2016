@@ -88,6 +88,11 @@ The `nolehmann/json` header file is distributed with the code for convenience
 License](http://opensource.org/licenses/MIT). More information can be found on
 the official [github page](https://github.com/nlohmann/json).
 
+The `AudioFile` header and source files are distributed with the code for convenience
+(in `include/AudioFile.h` and `src/AudioFile.cpp`).  It is licensed unde [GPL
+License](https://github.com/adamstark/AudioFile/blob/master/LICENSE). More information can be found on
+the official [github page](https://github.com/adamstark/AudioFile).
+
 #### Install GCC with std14 support (v4.9)
 
 The code uses some C++14 specific commands and requires g++-4.9 minimum to be compiled.
