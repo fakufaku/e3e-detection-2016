@@ -90,7 +90,7 @@ GSC::GSC(
 void GSC::process(e3e_complex *input, e3e_complex *output)
 {
   // Pre-emptivaly zero-out the content of output buffer
-  for (int f = 0 ; f < this->nchannel * (this->nfft / 2 + 1) ; f++)
+  for (int f = 0 ; f < this->nfft / 2 + 1 ; f++)
     output[f] = 0.f;
 
   // Wrap input/output in Eigen::Array
@@ -117,8 +117,6 @@ void GSC::process(e3e_complex *input, e3e_complex *output)
   // projection back: apply scale to match the output to channel 1
   this->projback(X, Y, this->pb_ref_channel);
 
-  std::cout << "In GSC: " << Y(0) << std::endl;
-  std::cout << "In GSC: " << output[this->f_min_index] << std::endl;
 }
 
 void GSC::rls_update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal)
@@ -133,26 +131,18 @@ void GSC::rls_update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal)
 
   // Update cross-covariance vector
   this->xcov = this->rls_ff * this->xcov + input.colwise() * ref_signal.conjugate();
-  //std::cout << "  RLS: cross-covariance done." << std::endl << std::flush;
 
   // The rest needs to be done frequency wise
   for (int f = 0 ; f < this->nfreq ; f++)
   {
-    //std::cout << "  RLS: freq = " << f << std::endl << std::flush;
     // Update covariance matrix using Sherman-Morrison Identity
     auto Rinv = this->covmat_inv.block(f * this->nchannel_ds, 0, this->nchannel_ds, this->nchannel_ds);
-    //std::cout << "  RLS: Inv covmat: access." << std::endl << std::flush;
-    //std::cout << "  RLS: lhs.cols() = " << Rinv.cols() << " rhs.rows() = " << input.matrix().row(f).transpose().rows() << std::endl << std::flush;
     Eigen::VectorXcf u = Rinv * input.matrix().row(f).transpose();
-    //std::cout << "  RLS: Inv covmat: mat-vec." << std::endl << std::flush;
     float v = 1. / (this->rls_ff + (input.matrix().row(f).conjugate() * u).real()(0,0)); // the denominator is a real number
-    //std::cout << "  RLS: Inv covmat: den." << std::endl << std::flush;
     Rinv = this->rls_ff_inv * (Rinv - (v * u * u.adjoint()));
-    //std::cout << "  RLS: Inv covmat: update." << std::endl << std::flush;
     
     // Multiply the two to obtain the new adaptive weight vector
     this->adaptive_weights.row(f) = Rinv * this->xcov.matrix().row(f).transpose();
-    //std::cout << "  RLS: weights: update." << std::endl << std::flush;
   }
 }
 

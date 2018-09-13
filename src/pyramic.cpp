@@ -88,7 +88,11 @@ void Pyramic::reader()
   {
     // Wait while current buffer is busy
     while(pyramicGetCurrentBufferHalf(p) == current_half)
+    {
+      if (!this->flag_is_running)
+        goto stop;
       usleep(50);
+    }
 
     this->mutex_read_empty.lock();
     if (!this->q_read_empty.empty())
@@ -115,6 +119,8 @@ void Pyramic::reader()
 
     current_half = toggle_half(current_half);
   }
+
+stop:
 
   pyramicStopCapture(this->p);
 }
@@ -154,7 +160,11 @@ void Pyramic::player()
   {
     // Wait for current half to be idle
     while (pyramicGetCurrentOutputBufferHalf(this->p) == current_half)
+    {
+      if (!this->flag_is_running)
+        goto stop;
       usleep(50);
+    }
 
     this->mutex_play_ready.lock();
     if (!this->q_play_ready.empty())
@@ -194,6 +204,8 @@ void Pyramic::player()
 
     current_half = toggle_half(current_half);
   }
+
+stop:
     
   // zero out the output buffer at the end
   for (i = 0 ; i < outBuf.length ; i++)
