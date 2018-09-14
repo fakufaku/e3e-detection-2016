@@ -15,7 +15,7 @@
 
 #define GSC_FILE_CONFIG "config/demo_gsc.json"
 //#define GSC_FILE_WEIGHTS "config/demo_gsc_weights.json"
-#define GSC_FILE_WEIGHTS "config/weights_delay_sum.json"
+#define GSC_FILE_WEIGHTS "data/the_weights.json"
 
 /*******************/
 /* GLOBAL VARS ETC */
