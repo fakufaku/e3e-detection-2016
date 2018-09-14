@@ -15,7 +15,7 @@ class Calibrator
     int nchannel;
     int nfreq;
     int sample_count;
-    Eigen::MatrixXcf covmat;   // Stack of covariance matrices (nfreq * nchannel, nchannel)
+    Eigen::MatrixXcf covmat;   // Stack of covariance matrices (nchannel, nfreq * nchannel)
     
     Calibrator(std::string _output_filename, int _nfft, int _nchannel);
     void process(e3e_complex *input);

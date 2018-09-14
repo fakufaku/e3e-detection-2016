@@ -1,8 +1,8 @@
 {
   "nchannel_ds" : 6,
-  "rls_ff" : 0.95,
-  "rls_reg" : 0.001,
-  "pb_ff" : 0.95,
+  "rls_ff" : 0.99,
+  "rls_reg" : 0.01,
+  "pb_ff" : 0.99,
   "pb_ref_channel" : 0,
   "f_max" : 8000
 }

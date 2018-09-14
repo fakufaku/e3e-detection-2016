@@ -38,21 +38,21 @@ class GSC
     int f_min_index, f_max_index;
 
     // The beamforming weights
-    Eigen::ArrayXXcf fixed_weights;    // size: (nfreq, nchannel)
-    Eigen::ArrayXXcf adaptive_weights; // size: (nfreq, nchannel_ds)
+    Eigen::ArrayXXcf fixed_weights;    // size: (nchannel, nfreq)
+    Eigen::ArrayXXcf adaptive_weights; // size: (nchannel_ds, nfreq)
 
     // The intermediate buffers
     Eigen::ArrayXcf output_fixed;             // size: (nfreq)
-    Eigen::ArrayXXcf output_blocking_matrix;  // size: (nfreq, nchannels)
-    Eigen::ArrayXXcf input_adaptive;          // size: (nfreq, nchannels_ds)
+    Eigen::ArrayXXcf output_blocking_matrix;  // size: (nchannels, nfreq)
+    Eigen::ArrayXXcf input_adaptive;          // size: (nchannels_ds, nfreq)
 
     // Projection back variables
     Eigen::ArrayXcf projback_num;  // numerator, size: (nfreq), complex
-    Eigen::ArrayXf projback_den;  // denominator, size: (nfreq), real-valued
+    Eigen::ArrayXf projback_den;   // denominator, size: (nfreq), real-valued
 
     // RLS variables
-    Eigen::MatrixXcf covmat_inv;  // inverse covariance matrices, size: (nfreq * nchannel_ds, nchannel_ds), all matrices are stacked
-    Eigen::ArrayXXcf xcov;                     // cross covariance vectors, size: (nfreq, nchannel_ds)
+    Eigen::MatrixXcf covmat_inv;  // inverse covariance matrices, size: (nchannel_ds, nnfreq * channel_ds), all matrices are stacked
+    Eigen::ArrayXXcf xcov;        // cross covariance vectors, size: (nchannel_ds, nfreq)
 
     GSC(
         std::string fixed_beamformer_file,  // path to the configuration file

@@ -66,7 +66,7 @@ GSC::GSC(
 
   // Intermediate buffers
   this->output_fixed.setZero(this->nfreq);
-  this->output_blocking_matrix.setZero(thiso->nchannel, this->nfreq);
+  this->output_blocking_matrix.setZero(this->nchannel, this->nfreq);
   this->input_adaptive.setZero(this->nchannel_ds, this->nfreq);
 
   // Projection back buffers
@@ -103,18 +103,17 @@ void GSC::process(e3e_complex *input, e3e_complex *output)
   this->output_fixed = (this->fixed_weights.conjugate() * X).colwise().sum();
 
   // Apply the blocking matrix
-  this->output_blocking_matrix = X - this->fixed_weights.colwise() * this->output_fixed;
+  this->output_blocking_matrix = X - this->fixed_weights.rowwise() * this->output_fixed.transpose();
 
   // Downsample the channels to a reasonnable number
   for (int c = 0, offset = 0 ; c < this->nchannel_ds ; c++, offset += this->ds)
-    this->input_adaptive.col(c) = this->output_blocking_matrix.block(0, offset, this->nfreq, this->ds).rowwise().sum() * this->ds_inv;
     this->input_adaptive.row(c) = this->output_blocking_matrix.block(offset, 0, this->ds, this->nfreq).colwise().sum() * this->ds_inv;
 
   // Update the adaptive weights
   this->rls_update(input_adaptive, this->output_fixed);
 
   // Compute the output signal
-  Y = this->output_fixed - (this->adaptive_weights.conjugate() * this->input_adaptive).colwise().sum();
+  Y = this->output_fixed - (this->adaptive_weights.conjugate() * this->input_adaptive).colwise().sum().transpose();
 
   // projection back: apply scale to match the output to channel 1
   this->projback(X, Y, this->pb_ref_channel);
@@ -130,9 +129,11 @@ void GSC::rls_update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal)
    * @param input The input reference signal vector
    * @param error The error signal
    */
+   float one_m_ff = (1. - this->rls_ff);
+   float ff = this->rls_ff / one_m_ff;
 
   // Update cross-covariance vector
-  this->xcov = this->rls_ff * this->xcov + input.rowwise() * ref_signal.conjugate();
+  this->xcov = one_m_ff * (ff * this->xcov + input.rowwise() * ref_signal.transpose().conjugate());
 
   // The rest needs to be done frequency wise
   for (int f = 0 ; f < this->nfreq ; f++)
@@ -140,11 +141,11 @@ void GSC::rls_update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal)
     // Update covariance matrix using Sherman-Morrison Identity
     auto Rinv = this->covmat_inv.block(0, f * this->nchannel_ds, this->nchannel_ds, this->nchannel_ds);
     Eigen::VectorXcf u = Rinv * input.matrix().col(f);
-    float v = 1. / (this->rls_ff + (input.matrix().col(f).adjoint() * u).real()(0,0)); // the denominator is a real number
+    float v = 1. / (ff + (input.matrix().col(f).adjoint() * u).real()(0,0)); // the denominator is a real number
     Rinv = this->rls_ff_inv * (Rinv - (v * u * u.adjoint()));
     
     // Multiply the two to obtain the new adaptive weight vector
-    this->adaptive_weights.row(f) = Rinv * this->xcov.matrix().col(f);
+    this->adaptive_weights.col(f) = Rinv * this->xcov.matrix().col(f);
   }
 }
 
@@ -156,7 +157,7 @@ void GSC::projback(Eigen::Map<Eigen::ArrayXXcf> &input, Eigen::Map<Eigen::ArrayX
    */
 
   // slice out the chosen columns of input
-  this->projback_num = this->pb_ff * this->projback_num + (1.f - this->pb_ff) * (output.conjugate() * input.row(input_ref_channel));
+  this->projback_num = this->pb_ff * this->projback_num + (1.f - this->pb_ff) * (output.conjugate() * input.row(input_ref_channel).transpose());
   this->projback_den = this->pb_ff * this->projback_den + (1.f - this->pb_ff) * output.abs2();
 
   // weight the output
