@@ -74,9 +74,10 @@ Install compile tools
 
 To run the code with matrix creator, one needs to install
 
-* FFTW
+* [FFTW](http://fftw.org/)
 * [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
 * [nolehmann/json](https://github.com/nlohmann/json)
+* [adamstark/AudioFile](https://github.com/adamstark/AudioFile)
 
 The Eigen library is distributed with the code for convenience (in
 `include/Eigen`). It is licensed under [MPL2](http://www.mozilla.org/MPL/2.0).
@@ -84,12 +85,12 @@ For more information see the [official
 website](http://eigen.tuxfamily.org/index.php?title=Main_Page).
 
 The `nolehmann/json` header file is distributed with the code for convenience
-(in `include/json.hpp`).  It is licensed unde [MIT
+(in `include/json.hpp`).  It is licensed under [MIT
 License](http://opensource.org/licenses/MIT). More information can be found on
 the official [github page](https://github.com/nlohmann/json).
 
 The `AudioFile` header and source files are distributed with the code for convenience
-(in `include/AudioFile.h` and `src/AudioFile.cpp`).  It is licensed unde [GPL
+(in `include/AudioFile.h` and `src/AudioFile.cpp`).  It is licensed under [GPL
 License](https://github.com/adamstark/AudioFile/blob/master/LICENSE). More information can be found on
 the official [github page](https://github.com/adamstark/AudioFile).
 
