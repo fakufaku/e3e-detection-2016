@@ -8,14 +8,10 @@
 #include <pyramic.h>
 #include <AudioFile.h>
 #include <stft.h>
-#include <gsc.h>
+#include <calibrator.h>
 
 #define NUM_SAMPLES 1024
 #define NFFT (2 * NUM_SAMPLES)
-
-#define GSC_FILE_CONFIG "config/demo_gsc.json"
-//#define GSC_FILE_WEIGHTS "config/demo_gsc_weights.json"
-#define GSC_FILE_WEIGHTS "config/weights_delay_sum.json"
 
 /*******************/
 /* GLOBAL VARS ETC */
@@ -25,6 +21,8 @@ float buffer_in[NUM_SAMPLES * PYRAMIC_CHANNELS_IN] = {0};
 float buffer_out[NUM_SAMPLES] = {0};
 float int2float = 1. / (1 << 15);
 int16_t float2int = (1 << 15) - 1;
+
+Calibrator calib("data/the_weights.json", NFFT, PYRAMIC_CHANNELS_IN);
 
 // for the audio file
 AudioFile<float> afile;
@@ -45,7 +43,7 @@ void init(int argc, char **argv)
 
 void clean_up()
 {
-
+  calib.finalize();
 }
 
 /************************************/
@@ -86,13 +84,7 @@ bool get_fresh_samples(std::vector<float> &buffer)
 // All the processing can be concentrated in this function
 void processing(std::vector<float> &input, buffer_t &output)
 { 
-  static GSC gsc(GSC_FILE_CONFIG, GSC_FILE_WEIGHTS, NFFT, PYRAMIC_SAMPLERATE, PYRAMIC_CHANNELS_IN);
   static STFT engine_in(NUM_SAMPLES, NFFT, 0, 0, PYRAMIC_CHANNELS_IN, STFT_WINDOW_BOTH);
-  static STFT engine_out (NUM_SAMPLES, NFFT, 0, 0, 1, STFT_WINDOW_BOTH);  // single output channel
-
-  // Zero the DC and middle element of the output frequency buffer
-  engine_out.freq_buffer[0] = 0.;
-  engine_out.freq_buffer[NFFT / 2] = 0.;
 
   // Convert the input buffer to float
   for (size_t n = 0 ; n < NUM_SAMPLES * PYRAMIC_CHANNELS_IN ; n++)
@@ -100,22 +92,14 @@ void processing(std::vector<float> &input, buffer_t &output)
 
   // Meat of the processing
   e3e_complex *spectrum_in = engine_in.analysis(buffer_in);
-  gsc.process(spectrum_in, engine_out.freq_buffer);
-  engine_out.synthesis(buffer_out);
+  calib.process(spectrum_in);
 
   // Post-processing before output
   for (size_t n = 0 ; n < NUM_SAMPLES ; n++)
   {
-    // clip and convert to int16_t
-    if (buffer_out[n] > 1)
-      output[2*n] = float2int;
-    else if (buffer_out[n] < -1)
-      output[2*n] = -float2int;
-    else
-      output[2*n] = (int16_t)(float2int * buffer_out[n]);
-
     // copy second channel
-    output[2*n+1] = output[2*n];
+    output[2*n] = 0;
+    output[2*n+1] = 0;
   }
 }
 
