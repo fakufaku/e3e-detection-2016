@@ -62,8 +62,8 @@ void Calibrator::finalize()
     // Add in the weight vector in interleaved fashion
     for (int n = 0 ; n < this->nchannel ; n++)
     {
-      weights.push_back(std::real(w(2 * n)));
-      weights.push_back(std::imag(w(2 * n + 1)));
+      weights.push_back(std::real(w(n)));
+      weights.push_back(std::imag(w(n)));
     }
   }
 
