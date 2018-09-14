@@ -7,7 +7,6 @@
  */
 
 #include <string>
-
 #include <Eigen/Dense>
 #include <e3e_detection.h>
 

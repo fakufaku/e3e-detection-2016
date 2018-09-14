@@ -3,8 +3,8 @@
 #include <assert.h>
 #include <iostream>
 
-#include "json.hpp"
-#include "gsc.h"
+#include <json.hpp>
+#include <gsc.h>
 
 using nlohmann::json;
 
