@@ -11,19 +11,19 @@ Calibrator::Calibrator(std::string _output_filename, int _nfft, int _nchannel)
 {
   this->nfreq = this->nfft / 2 + 1;
   this->sample_count = 0;
-  covmat.setZero(this->nfreq * this->nchannel, this->nchannel);
+  covmat.setZero(this->nchannel, this->nfreq * this->nchannel);
 }
 
 void Calibrator::process(e3e_complex *input)
 {
-  Eigen::Map<Eigen::MatrixXcf> X(input, this->nfreq, this->nchannel);
+  // WARNING: Eigen library stores arrays/matrices column-major (by default)
+  Eigen::Map<Eigen::MatrixXcf> X(input, this->nchannel, this->nfreq);
   this->sample_count++;
 
   for (int f = 1 ; f < this->nfreq ; f++)  // skip DC (start at 1)
   {
-    auto R = this->covmat.block(f * this->nchannel, 0, this->nchannel, this->nchannel);
-    auto x = X.row(f).transpose();
-    R += x * x.adjoint();
+    auto R = this->covmat.block(0, f * this->nchannel, this->nchannel, this->nchannel);
+    R += X.col(f) * X.col(f).adjoint();
   }
 }
 
@@ -39,7 +39,7 @@ void Calibrator::finalize()
   // now process the rest
   for (int f = 1 ; f < this->nfreq ; f++)  // skip DC (start at 1)
   {
-    auto R = this->covmat.block(f * this->nchannel, 0, this->nchannel, this->nchannel);
+    auto R = this->covmat.block(0, f * this->nchannel, this->nchannel, this->nchannel);
     R /= this->sample_count;
 
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXcf> eigensolver(R);

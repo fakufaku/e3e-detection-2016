@@ -112,6 +112,7 @@ class GSC_Newton(Plottable):
         # Compute the fixed beamformer
         X = pra.transform.analysis(calibration_signal, nfft, shift, win=win)
         self.fixed_weights = calibration(X)[1:,:]  # remove DC
+        self.norm_weights = 1. / np.linalg.norm(self.fixed_weights, axis=1, keepdims=True) ** 2
 
         # gsc adaptive weights
         self.adaptive_weights = np.zeros(
@@ -126,12 +127,12 @@ class GSC_Newton(Plottable):
 
         self.estimates = {
                 'covmat' : LeakyIntegration(
-                    0.95,  # average over this number of frames
+                    0.9,  # average over this number of frames
                     lambda X : X[:,:,None] * np.conj(X[:,None,:]),  # (nfreq, nchan, nchan),
                     init=np.array([np.eye(self.nchannel // self.ds) for i in range(self.nfft // 2)]) * 1e-3,
                     ),
                 'xcov' : LeakyIntegration(
-                    0.95,
+                    0.9,
                     lambda v : v[0] * np.conj(v[1][:,None]),
                     ),
                 }
@@ -150,7 +151,7 @@ class GSC_Newton(Plottable):
         out_fixed_bf = np.sum(np.conj(self.fixed_weights) * X, axis=1)
 
         # the adaptive branch of the GSC
-        noise_ss_signal = (X - self.fixed_weights * out_fixed_bf[:,None]).reshape((-1,self.nchannel // self.ds, self.ds)).sum(axis=-1)  # projection onto null space, and downsampling of channels
+        noise_ss_signal = (X - self.norm_weights * self.fixed_weights * out_fixed_bf[:,None]).reshape((-1,self.nchannel // self.ds, self.ds)).sum(axis=-1)  # projection onto null space, and downsampling of channels
 
         # update covariance matrix estimate
         self.estimates['covmat'].update(noise_ss_signal)

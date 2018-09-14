@@ -9,10 +9,12 @@ import json
 import numpy as np
 from scipy.io import wavfile
 import pyroomacoustics as pra
+import samplerate
 
 from gsc import calibration, GSC, GSC_Newton
 
-fs = 16000
+#fs = 16000
+fs = 48000
 room_size = [9.9, 7.5, 3.1]
 array_location = [5.5, 5.3, 1.1]
 source_locations = [
@@ -49,9 +51,11 @@ calib_seq = np.random.choice([-1.,1.], size=int(T_calib * fs))
 # Now import the speech
 source_signals = []
 for fn, pwr in zip(source_files, source_powers):
-    _, sig = wavfile.read(fn)
+    fs_sig, sig = wavfile.read(fn)
     sig = sig.astype(np.float)
     sig *= np.sqrt(pwr) / np.std(sig)
+    if fs_sig != fs:
+        sig = samplerate.resample(sig, fs / fs_sig, 'sinc_best')
     source_signals.append(sig)
 
 
@@ -71,7 +75,7 @@ with open('pyramic.json') as f:
     data = json.load(f)
     array = np.array(data['pyramic']).T
 
-# Position the array in the room
+#fs Position the array in the room
 array -= array.mean(axis=1, keepdims=True)
 array += np.array([[5.5, 5.3, 1.1]]).T
 room.add_microphone_array(pra.MicrophoneArray(array, room.fs))
@@ -103,8 +107,9 @@ stft_output = pra.transform.STFT(
 room.add_source(source_locations[0], signal=calib_seq)
 room.simulate()
 room.sources.pop()  # remove the calibration source
+calib_signal = room.mic_array.signals.T
 
-X = pra.transform.analysis(room.mic_array.signals.T, nfft, shift, win=awin)
+X = pra.transform.analysis(calib_signal, nfft, shift, win=awin)
 fixed_weights = calibration(X)
 
 
@@ -117,6 +122,20 @@ for loc, signal, delay in zip(source_locations, source_signals, source_delays):
     room.add_source(loc, signal=signal, delay=delay)
 room.simulate()
 recording = room.mic_array.signals.T
+
+# save the microphone signal for test on the pyramic itself
+if fs != 48000:
+    cal_48khz = samplerate.resample(calib_signal, 48000 / fs, 'sinc_best')
+    rec_48khz = samplerate.resample(recording, 48000 / fs, 'sinc_best')
+else:
+    cal_48khz = calib_signal
+    rec_48khz = recording
+
+m = np.maximum(np.abs(rec_48khz).max(), np.abs(cal_48khz).max())
+rec_48khz *= 0.5 * (2 ** 15 - 1) / m
+cal_48khz *= 0.5 * (2 ** 15 - 1) / m
+wavfile.write('microphone_recording.wav', 48000, rec_48khz.astype(np.int16))
+wavfile.write('calibration_recording.wav', 48000, cal_48khz.astype(np.int16))
 
 ###############
 # Run the GSC #
