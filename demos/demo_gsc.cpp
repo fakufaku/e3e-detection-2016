@@ -6,9 +6,13 @@
 #include <iostream>
 #include <fstream>
 
+#include <json.hpp>
+#include <hpf.h>
 #include <gsc.h>
 #include <stft.h>
 #include <pyramic.h>
+
+using nlohmann::json;
 
 /*******************/
 /* GLOBAL VARS ETC */
@@ -16,6 +20,7 @@
 
 STFT *engine_in, *engine_out;
 GSC *gsc;
+HPF *hpf;
 float *buffer_in, *buffer_out;
 int frame_size = 0;
 
@@ -48,30 +53,35 @@ void init(int argc, char **argv)
   int nfft = config.at("nfft").get<int>();
   int nchannel_ds = config.at("nchannel_ds").get<int>();
   float rls_ff = config.at("rls_ff").get<float>();    // forgetting factor for RLS
-  float rls_ff_inv = 1.f / this->rls_ff;              // ... and its inverse
+  float rls_ff_inv = 1.f / rls_ff;              // ... and its inverse
   float rls_reg = config.at("rls_reg").get<float>();  // regularization factor for RLS
   float pb_ff = config.at("pb_ff").get<float>();      // forgetting factor for projection back
   int pb_ref_channel = config.at("pb_ref_channel").get<int>();  // The reference channel for projection back
+  float high_pass_cutoff = config.at("high_pass_cutoff").get<float>();
   float f_max = config.at("f_max").get<float>();
 
   // allocate the sample buffers
   buffer_in = new float[frame_size * PYRAMIC_CHANNELS_IN];
   buffer_out = new float[frame_size];
 
+  // allocate the high pass filter
+  hpf = new HPF(high_pass_cutoff, PYRAMIC_SAMPLERATE, nfft);
+
   // allocate GSC object
   gsc = new GSC(weights_file, nfft, PYRAMIC_SAMPLERATE, PYRAMIC_CHANNELS_IN,
-      nchannels_ds, rls_ff, rls_reg, pb_ff, pb_ref_channel, f_max);
+      nchannel_ds, rls_ff, rls_reg, pb_ff, pb_ref_channel, f_max);
   engine_in = new STFT(frame_size, nfft, 0, 0, PYRAMIC_CHANNELS_IN, STFT_WINDOW_BOTH);
   engine_out = new STFT(frame_size, nfft, 0, 0, 1, STFT_WINDOW_BOTH);
 
   // Zero the DC and middle element of the output frequency buffer
   engine_out->freq_buffer[0] = 0.;
-  engine_out->freq_buffer[NFFT / 2] = 0.;
+  engine_out->freq_buffer[nfft / 2] = 0.;
 }
 
 void clean_up()
 {
   delete gsc;
+  delete hpf;
   delete engine_in;
   delete engine_out;
   delete buffer_in;
@@ -90,15 +100,31 @@ void processing(buffer_t &input, buffer_t &output)
   static int16_t float2int = (1 << 15) - 1;
 
   // Convert the input buffer to float
+  bool has_clipped_in = false;
   for (size_t n = 0 ; n < frame_size * PYRAMIC_CHANNELS_IN ; n++)
+  {
+    if (!has_clipped_in && abs(input[n]) >= float2int)
+    {
+      std::cout << "Input: clipping" << std::endl;
+      has_clipped_in = true;
+    }
     buffer_in[n] = int2float * input[n];
+  }
 
-  // Meat of the processing
+  // Go to freq domain
   e3e_complex *spectrum_in = engine_in->analysis(buffer_in);
+
+  // generalized sidelobe canceller
   gsc->process(spectrum_in, engine_out->freq_buffer);
+
+  // Apply HPF in frequency domain
+  hpf->process(engine_out->freq_buffer);
+
+  // go back to time domain
   engine_out->synthesis(buffer_out);
 
   // Post-processing before output
+  bool has_clipped_out = false;
   for (size_t n = 0 ; n < frame_size ; n++)
   {
     // clip and convert to int16_t
@@ -110,7 +136,14 @@ void processing(buffer_t &input, buffer_t &output)
       output[2*n] = (int16_t)(float2int * buffer_out[n]);
 
     // copy second channel
-    output[2*n+1] = output[2*n];
+    output[2*n+1] = input[PYRAMIC_CHANNELS_IN * n];
+
+    // check for clipping
+    if (!has_clipped_out && (abs(output[2*n]) >= float2int || abs(output[2*n+1] >= float2int)))
+    {
+      std::cout << "Output: clipping" << std::endl;
+      has_clipped_out = true;
+    }
   }
 
 }
@@ -128,7 +161,7 @@ void signal_handler(int param)
 }
 
 // Now the main program
-int main(void)
+int main(int argc, char **argv)
 {
   int ret;
   float ellapsed_time = 0.;
@@ -137,7 +170,7 @@ int main(void)
   std::signal(SIGINT, signal_handler);
 
   // User defined initializations
-  init();
+  init(argc, argv);
 
   // Start pyramic and the loop
   Pyramic pyramic(frame_size);
