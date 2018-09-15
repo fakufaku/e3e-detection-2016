@@ -3,6 +3,25 @@ Pyramic Demo at IWAENC 2018
 
 We will use [Pyramic](https://github.com/LCAV/Pyramic) for a demo at IWAENC in Tokyo.
 
+
+### Compile and run the demo
+
+    # prepare the environment
+    source start_demo_env.sh
+
+    # compile the demo (make sure SPEEDFLAGS is used in the Makefile)
+    make demos
+
+    # After placing the microphone array and target speaker run the calibration
+    # when the room is relatively silent and the target source playing the
+    # calibration signal `data/calibration_signal.wav`
+    # Usage: demo_gsc_calibration <config_file> <weight_output_file> <recording_time>
+    ./bin/demo_gsc_calibration config/demo_gsc.json config/my_weights.json 15
+
+    # Now you can run the demo specifying the same config and weight files
+    ./bin/demo_gsc config/demo_gsc.json config/my_weights.json
+
+
 ### Compile and run tests
 
     # build the tests
