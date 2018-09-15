@@ -9,36 +9,40 @@
 using nlohmann::json;
 
 GSC::GSC(
-    std::string config_file,
-    std::string weights_file,
-    int _nfft,     // the FFT length
-    float _fs,     // the sampling frequency
-    int _nchannel  // the number of input channels
+      std::string weights_file,           // path to the file containing the fixed beamforming weights
+      int _nfft,     // the FFT size
+      float _fs,      // the sampling frequency
+      int _nchannel,   // the number of input channels
+      int _nchannel_ds,
+      float _rls_ff,
+      float _rls_reg,
+      float _pb_ff,
+      int _pb_ref_channel,
+      float _f_max
     )
-    : nfft(_nfft), fs(_fs), nchannel(_nchannel)
+    : nfft(_nfft), fs(_fs), nchannel(_nchannel), nchannel_ds(_nchannel_ds),
+      rls_ff(_rls_ff), rls_reg(_rls_reg), pb_ff(_pb_ff),
+      pb_ref_channel(_pb_ref_channel), f_max(_f_max)
 {
-  // read in the JSON file containing all the parameters
-  std::ifstream i(config_file, std::ifstream::in);
-  json config;
-  i >> config;
-  i.close();
+  /**
+    Constructor of the Generalized Sidelobe Canceller (GSC) class.
 
-  std::cout << "Finished reading config file" << std::endl << std::flush;
+    @param nfft The FFT size used on the input signal
+    @param fs The sampling frequency of the input signal
+    @param nchannel The number of input channels
+    @param nchannel_ds The number of channels after the spatial downsampling step
+    @param rls_ff The forgetting factor of RLS
+    @param rls_reg The regularization parameter of RLS
+    @param pb_ff The forgetting factor of the projection back
+    @param pb_ref_channel The reference input channel for the projection back
+    @param f_max The maximum frequency to process, above this frequency everything is set to zero
+    */
 
-  // assign parameters to object attributes
-  this->nchannel_ds = config.at("nchannel_ds").get<int>();
+  // compute the downsampling factor
   this->ds = this->nchannel / this->nchannel_ds;
   this->ds_inv = 1.f / this->ds;
 
-  // algorithms parameters
-  this->rls_ff = config.at("rls_ff").get<float>();    // forgetting factor for RLS
-  this->rls_ff_inv = 1.f / this->rls_ff;              // ... and its inverse
-  this->rls_reg = config.at("rls_reg").get<float>();  // regularization factor for RLS
-  this->pb_ff = config.at("pb_ff").get<float>();      // forgetting factor for projection back
-  this->pb_ref_channel = config.at("pb_ref_channel").get<int>();  // The reference channel for projection back
-
   // Limit frequencies
-  this->f_max = config.at("f_max").get<float>();
   this->f_min_index = 1;  // we skip the DC component in the processing
   this->f_max_index = int(ceilf((this->f_max / this->fs) * this->nfft + 0.5)); // round to closest bin
   this->nfreq = this->f_max_index - this->f_min_index;  // only consider the number of bands processed

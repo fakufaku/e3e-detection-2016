@@ -55,11 +55,16 @@ class GSC
     Eigen::ArrayXXcf xcov;        // cross covariance vectors, size: (nchannel_ds, nfreq)
 
     GSC(
-        std::string fixed_beamformer_file,  // path to the configuration file
         std::string weights_file,           // path to the file containing the fixed beamforming weights
         int _nfft,     // the FFT size
         float fs,      // the sampling frequency
-        int nchannel   // the number of input channels
+        int nchannel,   // the number of input channels
+        int nchannel_ds,
+        float rls_ff,
+        float rls_reg,
+        float pb_ff,
+        int pb_ref_channel,
+        float f_max
        );
 
     void process(e3e_complex *input, e3e_complex *output);    

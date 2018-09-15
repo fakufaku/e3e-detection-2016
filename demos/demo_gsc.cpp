@@ -4,39 +4,78 @@
 #include <cmath>
 #include <complex>
 #include <iostream>
+#include <fstream>
 
 #include <gsc.h>
 #include <stft.h>
 #include <pyramic.h>
 
-#define NUM_SAMPLES 1024
-#define NFFT (2 * NUM_SAMPLES)
-
-#define GSC_FILE_CONFIG "config/demo_gsc.json"
-//#define GSC_FILE_WEIGHTS "config/demo_gsc_weights.json"
-#define GSC_FILE_WEIGHTS "config/weights_delay_sum.json"
-
 /*******************/
 /* GLOBAL VARS ETC */
 /*******************/
 
-STFT engine_in(NUM_SAMPLES, NFFT, 0, 0, PYRAMIC_CHANNELS_IN, STFT_WINDOW_BOTH);
-STFT engine_out(NUM_SAMPLES, NFFT, 0, 0, 1, STFT_WINDOW_BOTH);  // single output channel
-GSC gsc(GSC_FILE_CONFIG, GSC_FILE_WEIGHTS, NFFT, PYRAMIC_SAMPLERATE, PYRAMIC_CHANNELS_IN);
-float buffer_in[NUM_SAMPLES * PYRAMIC_CHANNELS_IN] = {0};
-float buffer_out[NUM_SAMPLES] = {0};
-float int2float = 1. / (1 << 15);
-int16_t float2int = (1 << 15) - 1;
+STFT *engine_in, *engine_out;
+GSC *gsc;
+float *buffer_in, *buffer_out;
+int frame_size = 0;
 
 /*****************************/
 /* USER-DEFINED INIT ROUTINE */
 /*****************************/
 
-void init()
+void init(int argc, char **argv)
 {
+  if (argc != 3)
+  {
+    printf("Usage: %s <config_file> <weights_file>\n", argv[0]);
+    exit(0);
+  }
+
+  // The configuration files
+  std::string config_file(argv[1]);
+  std::string weights_file(argv[2]);
+  
+  // read in the JSON file containing the configuration
+  std::ifstream i(config_file, std::ifstream::in);
+  json config;
+  i >> config;
+  i.close();
+
+  std::cout << "Finished reading config file" << std::endl << std::flush;
+
+  // get all the GSC parameters
+  frame_size = config.at("frame_size").get<int>();
+  int nfft = config.at("nfft").get<int>();
+  int nchannel_ds = config.at("nchannel_ds").get<int>();
+  float rls_ff = config.at("rls_ff").get<float>();    // forgetting factor for RLS
+  float rls_ff_inv = 1.f / this->rls_ff;              // ... and its inverse
+  float rls_reg = config.at("rls_reg").get<float>();  // regularization factor for RLS
+  float pb_ff = config.at("pb_ff").get<float>();      // forgetting factor for projection back
+  int pb_ref_channel = config.at("pb_ref_channel").get<int>();  // The reference channel for projection back
+  float f_max = config.at("f_max").get<float>();
+
+  // allocate the sample buffers
+  buffer_in = new float[frame_size * PYRAMIC_CHANNELS_IN];
+  buffer_out = new float[frame_size];
+
+  // allocate GSC object
+  gsc = new GSC(weights_file, nfft, PYRAMIC_SAMPLERATE, PYRAMIC_CHANNELS_IN,
+      nchannels_ds, rls_ff, rls_reg, pb_ff, pb_ref_channel, f_max);
+  engine_in = new STFT(frame_size, nfft, 0, 0, PYRAMIC_CHANNELS_IN, STFT_WINDOW_BOTH);
+  engine_out = new STFT(frame_size, nfft, 0, 0, 1, STFT_WINDOW_BOTH);
+
   // Zero the DC and middle element of the output frequency buffer
-  engine_out.freq_buffer[0] = 0.;
-  engine_out.freq_buffer[NFFT / 2] = 0.;
+  engine_out->freq_buffer[0] = 0.;
+  engine_out->freq_buffer[NFFT / 2] = 0.;
+}
+
+void clean_up()
+{
+  delete gsc;
+  delete engine_in;
+  delete engine_out;
+  delete buffer_in;
+  delete buffer_out;
 }
 
 /***********************************/
@@ -46,17 +85,21 @@ void init()
 // All the processing can be concentrated in this function
 void processing(buffer_t &input, buffer_t &output)
 { 
+  // These constants are needed to convert from int16 to float and back
+  static float int2float = 1. / (1 << 15);
+  static int16_t float2int = (1 << 15) - 1;
+
   // Convert the input buffer to float
-  for (size_t n = 0 ; n < NUM_SAMPLES * PYRAMIC_CHANNELS_IN ; n++)
+  for (size_t n = 0 ; n < frame_size * PYRAMIC_CHANNELS_IN ; n++)
     buffer_in[n] = int2float * input[n];
 
   // Meat of the processing
-  e3e_complex *spectrum_in = engine_in.analysis(buffer_in);
-  gsc.process(spectrum_in, engine_out.freq_buffer);
-  engine_out.synthesis(buffer_out);
+  e3e_complex *spectrum_in = engine_in->analysis(buffer_in);
+  gsc->process(spectrum_in, engine_out->freq_buffer);
+  engine_out->synthesis(buffer_out);
 
   // Post-processing before output
-  for (size_t n = 0 ; n < NUM_SAMPLES ; n++)
+  for (size_t n = 0 ; n < frame_size ; n++)
   {
     // clip and convert to int16_t
     if (buffer_out[n] > 1)
@@ -97,7 +140,7 @@ int main(void)
   init();
 
   // Start pyramic and the loop
-  Pyramic pyramic(NUM_SAMPLES);
+  Pyramic pyramic(frame_size);
 
   ret = pyramic.start();
 
@@ -135,4 +178,6 @@ int main(void)
   {
     printf("Failed to start Pyramic.");
   }
+
+  clean_up();
 }
