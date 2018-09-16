@@ -28,7 +28,9 @@ class GSC
     
     // algorithm parameters
     float rls_ff;
-    float rls_ff_inv;
+    float rls_ff_inv;  // 1 / ff
+    float rls_one_m_ff;  // 1. - ff
+    float rls_ff_ratio;  // ff / (1 - ff)
     float rls_reg;
     float pb_ff;
     int pb_ref_channel;

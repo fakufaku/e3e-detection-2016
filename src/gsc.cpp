@@ -38,6 +38,10 @@ GSC::GSC(
     @param f_max The maximum frequency to process, above this frequency everything is set to zero
     */
 
+  this->rls_ff_inv = 1.f / this->rls_ff;
+  this->rls_one_m_ff = 1.f - this->rls_ff;
+  this->rls_ff_ratio = this->rls_ff / this->rls_one_m_ff;
+
   // compute the downsampling factor
   this->ds = this->nchannel / this->nchannel_ds;
   this->ds_inv = 1.f / this->ds;
@@ -137,11 +141,10 @@ void GSC::rls_update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal)
    * @param input The input reference signal vector
    * @param error The error signal
    */
-   float one_m_ff = (1. - this->rls_ff);
-   float ff = this->rls_ff / one_m_ff;
 
   // Update cross-covariance vector
-  this->xcov = one_m_ff * (ff * this->xcov + input.rowwise() * ref_signal.transpose().conjugate());
+  this->xcov = this->rls_ff * this->xcov
+             + this->rls_one_m_ff * (input.rowwise() * ref_signal.transpose().conjugate());
 
   // The rest needs to be done frequency wise
   for (int f = 0 ; f < this->nfreq ; f++)
@@ -149,7 +152,7 @@ void GSC::rls_update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal)
     // Update covariance matrix using Sherman-Morrison Identity
     auto Rinv = this->covmat_inv.block(0, f * this->nchannel_ds, this->nchannel_ds, this->nchannel_ds);
     Eigen::VectorXcf u = Rinv * input.matrix().col(f);
-    float v = 1. / (ff + (input.matrix().col(f).adjoint() * u).real()(0,0)); // the denominator is a real number
+    float v = 1. / (this->rls_ff_ratio + (input.matrix().col(f).adjoint() * u).real()(0,0)); // the denominator is a real number
     Rinv = this->rls_ff_inv * (Rinv - (v * u * u.adjoint()));
     
     // Multiply the two to obtain the new adaptive weight vector
