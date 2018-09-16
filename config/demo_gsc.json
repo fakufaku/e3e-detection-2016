@@ -2,9 +2,9 @@
   "frame_size" : 1024,
   "nfft" : 2048,
   "nchannel_ds" : 6,
-  "rls_ff" : 0.995,
+  "rls_ff" : 0.9995,
   "rls_reg" : 0.01,
-  "pb_ff" : 0.99,
+  "pb_ff" : 0.999,
   "pb_ref_channel" : 0,
   "high_pass_cutoff" : 200,
   "f_max" : 16000

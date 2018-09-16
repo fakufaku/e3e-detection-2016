@@ -133,10 +133,12 @@ void processing(buffer_t &input, buffer_t &output)
 
 // Use this to exit the possibly infinite processing loop
 bool is_running = true;
+bool interrupted = false;
 void signal_handler(int param)
 {
   printf("The program was interrupted. Cleaning up now.");
   is_running = false;
+  interrupted = true;
 }
 
 // Now the main program
@@ -194,5 +196,6 @@ int main(int argc, char **argv)
     printf("Failed to start Pyramic.");
   }
 
-  clean_up();
+  if (!interrupted)
+    clean_up();
 }
