@@ -9,6 +9,7 @@
 #include <string>
 #include <Eigen/Dense>
 #include <e3e_detection.h>
+#include <rls.h>
 
 class GSC
 {
@@ -50,9 +51,8 @@ class GSC
     Eigen::ArrayXcf projback_num;  // numerator, size: (nfreq), complex
     Eigen::ArrayXf projback_den;   // denominator, size: (nfreq), real-valued
 
-    // RLS variables
-    Eigen::MatrixXcf covmat_inv;  // inverse covariance matrices, size: (nchannel_ds, nnfreq * channel_ds), all matrices are stacked
-    Eigen::ArrayXXcf xcov;        // cross covariance vectors, size: (nchannel_ds, nfreq)
+    // RLS sub-algorithm
+    RLS *updater;
 
     GSC(
         std::string weights_file,           // path to the file containing the fixed beamforming weights
@@ -66,6 +66,7 @@ class GSC
         int pb_ref_channel,
         float f_max
        );
+    ~GSC();
 
     void process(e3e_complex *input, e3e_complex *output);    
     void rls_update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal);
