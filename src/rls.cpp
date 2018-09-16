@@ -120,18 +120,9 @@ void RLS::update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal)
     auto uuH = (v * u) * u.adjoint();
 
     Rinv = (double)this->ff_inv * (Rinv - ((v * u) * u.adjoint()));
-    Rinv.diagonal() = Rinv.diagonal().real();
+    Rinv.diagonal() = Rinv.diagonal().real();  // we now this should be real and positive
 
-    /*
-    if (fabsf(std::imag(Rinv.trace())) > TRACE_VAL_RESET)
-    { 
-      std::cout << "Reset cov mat at f = " << f << std::endl;
-      Rinv.setIdentity(this->nchannel, this->nchannel);
-      Rinv.diagonal() *= this->reg_inv;
-    }
-    */
-
-    if (f == 50 && count == 20)
+    if (f == 50 && count == 100)
     {
       std::cout << "The trace is " << Rinv.trace() << std::endl;
       count = 0;
@@ -139,6 +130,13 @@ void RLS::update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal)
     
     // Multiply the two to obtain the new adaptive weight vector
     this->weights[this->w_update_index].col(f) = (Rinv * this->xcov.cast<std::complex<double>>().matrix().col(f)).array().cast<std::complex<float>>();
+
+    // swap the weights buffer
+    this->mutex_weights.lock();
+    int t = this->w_consume_index;
+    this->w_consume_index = this->w_update_index;
+    this->w_update_index = t;
+    this->mutex_weights.unlock();
   }
 }
 
@@ -171,13 +169,6 @@ void RLS::run()
     this->mutex_q_free.lock();
     this->q_free.push(b);
     this->mutex_q_free.unlock();
-
-    // swap the weights buffer
-    this->mutex_weights.lock();
-    int t = this->w_consume_index;
-    this->w_consume_index = this->w_update_index;
-    this->w_update_index = t;
-    this->mutex_weights.unlock();
   }
 }
 

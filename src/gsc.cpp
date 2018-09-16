@@ -112,7 +112,12 @@ void GSC::process(e3e_complex *input, e3e_complex *output)
 
   // Downsample the channels to a reasonnable number
   for (int c = 0, offset = 0 ; c < this->nchannel_ds ; c++, offset += this->ds)
-    this->input_adaptive.row(c) = this->output_blocking_matrix.block(offset, 0, this->ds, this->nfreq).colwise().sum() * this->ds_inv;
+  {
+    int D = offset + this->ds;
+    if (D > this->nchannel)
+      D = this->nchannel;
+    this->input_adaptive.row(c) = this->output_blocking_matrix.block(offset, 0, D - offset, this->nfreq).colwise().sum() * this->ds_inv;
+  }
 
   // Update the adaptive weights
   this->updater->push(input_adaptive, this->output_fixed);
