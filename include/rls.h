@@ -7,6 +7,7 @@
 #include <mutex>
 
 #define QSIZE 2
+#define TRACE_VAL_RESET 1e-4
 
 class RLS
 {
@@ -15,7 +16,10 @@ class RLS
     int nfreq;
     float ff;
     float reg;
-    float ff_inv;
+    float ff_inv;  // 1. / ff
+    float one_m_ff;  // 1. - ff
+    float ff_ratio;
+    float reg_inv;
 
     bool is_running = false;  // indicates wether the thread has been started or not
     
@@ -36,7 +40,7 @@ class RLS
     std::thread run_thread;
 
     // RLS variables
-    Eigen::MatrixXcf covmat_inv;  // inverse covariance matrices, size: (nchannel, nnfreq * channel_ds), all matrices are stacked (horizontally)
+    Eigen::MatrixXcd covmat_inv;  // inverse covariance matrices, size: (nchannel, nnfreq * channel_ds), all matrices are stacked (horizontally)
     Eigen::ArrayXXcf xcov;        // cross covariance vectors, size: (nchannel, nfreq)
 
     RLS(int nchannel, int nfreq, float ff, float reg);
