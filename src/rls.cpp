@@ -130,14 +130,14 @@ void RLS::update(Eigen::ArrayXXcf &input, Eigen::ArrayXcf &ref_signal)
     
     // Multiply the two to obtain the new adaptive weight vector
     this->weights[this->w_update_index].col(f) = (Rinv * this->xcov.cast<std::complex<double>>().matrix().col(f)).array().cast<std::complex<float>>();
-
-    // swap the weights buffer
-    this->mutex_weights.lock();
-    int t = this->w_consume_index;
-    this->w_consume_index = this->w_update_index;
-    this->w_update_index = t;
-    this->mutex_weights.unlock();
   }
+
+  // swap the weights buffer
+  this->mutex_weights.lock();
+  int t = this->w_consume_index;
+  this->w_consume_index = this->w_update_index;
+  this->w_update_index = t;
+  this->mutex_weights.unlock();
 }
 
 void RLS::run()
