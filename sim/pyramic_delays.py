@@ -33,7 +33,7 @@ if __name__ == '__main__':
     source_loc = np.r_[0.7, 0., -0.05,]
 
     # a vector pointing from the source towards the array (horizontal plane)
-    p =  source_loc / np.linalg.norm(source_loc)
+    p =  - source_loc / np.linalg.norm(source_loc)
 
     # the frequency vector
     omega = 2. * np.pi * (np.arange(args.nfft // 2 + 1) / args.nfft * args.fs)
@@ -83,6 +83,7 @@ if __name__ == '__main__':
         plt.title('{} Hz'.format(f_hz))
 
     plt.show()
+
 
 
     # the weights are stored with channels interleaved: [ch0, ch1, ..., ch47, ...]
