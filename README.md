@@ -5,7 +5,7 @@ This repository contains C++ code to run real-time adaptive beamforming
 suitable for a large number of channels. We use it with the
 [Pyramic](https://github.com/LCAV/Pyramic) microphone array, which makes use of
 the [DE1-SoC](https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&No=836)
-FPGA/ARM comba.
+FPGA/ARM combo.
 
 This is the code that was used for our demo at [IWAENC 2018](http://www.iwaenc2018.org) in Tokyo.
 
