@@ -1,7 +1,13 @@
 Pyramic Demo at IWAENC 2018
 ===========================
 
-We will use [Pyramic](https://github.com/LCAV/Pyramic) for a demo at IWAENC in Tokyo.
+This repository contains C++ code to run real-time adaptive beamforming
+suitable for a large number of channels. We use it with the
+[Pyramic](https://github.com/LCAV/Pyramic) microphone array, which makes use of
+the [DE1-SoC](https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&No=836)
+FPGA/ARM comba.
+
+This is the code that was used for our demo at [IWAENC 2018](http://www.iwaenc2018.org) in Tokyo.
 
 
 ### Compile and run the demo
@@ -91,9 +97,12 @@ Install compile tools
 
     apt-get install build-essential gfortran manpages-dev
 
-To run the code with matrix creator, one needs to install
+To run the code, one needs to install
 
 * [FFTW](http://fftw.org/)
+
+These other libraries are used, but are distributed with the code
+
 * [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
 * [nolehmann/json](https://github.com/nlohmann/json)
 * [adamstark/AudioFile](https://github.com/adamstark/AudioFile)
@@ -160,7 +169,7 @@ Compile FFTW on ARM with floating point NEON support
     make install
     ldconfig
 
-Replace <ARCH> by
+Replace `<ARCH>` by
 
 * cortex-a8 for BBB
 * cortex-a9 for DE1-SoC

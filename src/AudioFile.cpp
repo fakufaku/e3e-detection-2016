@@ -17,6 +17,8 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * 2018-09 Modified by Robin Scheibler to handle more than two channels
  */
 //=======================================================================
 
@@ -297,13 +299,11 @@ bool AudioFile<T>::decodeWaveFile (std::vector<uint8_t>& fileData)
     }
     
     // check the number of channels is mono or stereo
-    /*
-    if (numChannels < 1 ||numChannels > 2)
+    if (numChannels < 1)
     {
-        std::cout << "ERROR: this WAV file seems to be neither mono nor stereo (perhaps multi-track, or corrupted?)" << std::endl;
+        std::cout << "ERROR: this WAV file seems to have less thane one channel (perhaps corrupted?)" << std::endl;
         return false;
     }
-    */
     
     // check header data is consistent
     if ((numBytesPerSecond != (numChannels * sampleRate * bitDepth) / 8) || (numBytesPerBlock != (numChannels * numBytesPerSample)))
@@ -412,9 +412,9 @@ bool AudioFile<T>::decodeAiffFile (std::vector<uint8_t>& fileData)
     }
     
     // check the number of channels is mono or stereo
-    if (numChannels < 1 ||numChannels > 2)
+    if (numChannels < 1)
     {
-        std::cout << "ERROR: this AIFF file seems to be neither mono nor stereo (perhaps multi-track, or corrupted?)" << std::endl;
+        std::cout << "ERROR: this AIFF file seems to have less than one channel (perhaps corrupted?)" << std::endl;
         return false;
     }
     
