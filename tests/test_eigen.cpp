@@ -39,7 +39,7 @@ void test_obj()
   obj.print();
 
   std::cout << "Getting only one coef: " << obj_global.get(0) << std::endl;
-  obj2.print();
+  obj.print();
 
 }
 

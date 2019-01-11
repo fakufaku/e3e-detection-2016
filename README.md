@@ -184,3 +184,14 @@ Note that you should have the same `gfortran` version than gcc
     make TARGET=CORTEXA9
     make PREFIX=/path/to/pyramic-demo install
 
+
+### Compile and run the code on regular Unix machine
+
+Obviously, here we can't use Pyramic to get the audio. The goal is to process
+sound files instead. Or at some point implement ALSA based processing.
+
+#### Dependencies
+
+This was tested on `Ubuntu 18.04`.
+
+    sudo apt-get install libfftw3-dev libfftw3-dbg libfftw3-3
