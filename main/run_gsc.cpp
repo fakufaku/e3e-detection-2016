@@ -76,10 +76,11 @@ void init(int argc, char **argv)
 
   // Read in the input file
   afile_in.load(std::string(argv[3]));
+  n_channels = afile_in.getNumChannels();
   num_samples = afile_in.getNumSamplesPerChannel();
   samplerate = afile_in.getSampleRate();
   bitdepth = afile_in.getBitDepth();
-  std::cout << "The file has " << num_samples << std::endl;
+  std::cout << "The file has " << num_samples << " samples" << std::endl;
 
   // Prepare the output file
   afile_out_name = argv[4];
@@ -159,81 +160,13 @@ void push_new_samples(float *buffer)
    * Fills the output file buffer
    */
 
-  for (int n = 0 ; n < frame_size && sample_index_out < num_samples_out ; n++)
+  for (int n = 0 ; n < frame_size && sample_index_out < num_samples_out ; n++, sample_index_out++)
     afile_out.samples[0][sample_index_out] = buffer[n];
-}
-
-/***********************************/
-/* USER-DEFINED PROCESSING ROUTINE */
-/***********************************/
-
-// All the processing can be concentrated in this function
-void processing(float *input, float *output)
-{ 
-  // These constants are needed to convert from int16 to float and back
-  static float int2float = 1. / (1 << 15);
-  static int16_t float2int = (1 << 15) - 1;
-
-  // Convert the input buffer to float
-  bool has_clipped_in = false;
-  for (size_t n = 0 ; n < frame_size * n_channels ; n++)
-  {
-    if (!has_clipped_in && abs(input[n]) >= float2int)
-    {
-      std::cout << "Input: clipping" << std::endl;
-      has_clipped_in = true;
-    }
-    buffer_in[n] = int2float * input[n];
-  }
-
-  // Go to freq domain
-  e3e_complex *spectrum_in = engine_in->analysis(buffer_in);
-
-  // generalized sidelobe canceller
-  gsc->process(spectrum_in, engine_out->freq_buffer);
-
-  // Apply HPF in frequency domain
-  hpf->process(engine_out->freq_buffer);
-
-  // go back to time domain
-  engine_out->synthesis(buffer_out);
-
-  // Post-processing before output
-  bool has_clipped_out = false;
-  for (size_t n = 0 ; n < frame_size ; n++)
-  {
-    // clip and convert to int16_t
-    if (buffer_out[n] > 1)
-      output[2*n] = float2int;
-    else if (buffer_out[n] < -1)
-      output[2*n] = -float2int;
-    else
-      output[2*n] = (int16_t)(float2int * buffer_out[n]);
-
-    // copy second channel
-    output[2*n+1] = input[n_channels * n];
-
-    // check for clipping
-    if (!has_clipped_out && (abs(output[2*n]) >= float2int || abs(output[2*n+1] >= float2int)))
-    {
-      std::cout << "Output: clipping" << std::endl;
-      has_clipped_out = true;
-    }
-  }
-
 }
 
 /*************************/
 /*** THE INFINITE LOOP ***/
 /*************************/
-
-// Use this to exit the possibly infinite processing loop
-bool is_running = true;
-void signal_handler(int param)
-{
-  printf("The program was interrupted. Cleaning up now.");
-  is_running = false;
-}
 
 // Now the main program
 int main(int argc, char **argv)
@@ -241,16 +174,22 @@ int main(int argc, char **argv)
   int ret;
   float ellapsed_time = 0.;
 
-  // install the signal handler
-  std::signal(SIGINT, signal_handler);
-
   // User defined initializations
   init(argc, argv);
 
   while (get_fresh_samples(buffer_in))  // The loop runs until catching a SIGINT (i.e. ctrl-C)
   {
-    // Call the processing routine
-    processing(buffer_in, buffer_out);
+    // Go to freq domain
+    e3e_complex *spectrum_in = engine_in->analysis(buffer_in);
+
+    // generalized sidelobe canceller
+    gsc->process(spectrum_in, engine_out->freq_buffer);
+
+    // Apply HPF in frequency domain
+    hpf->process(engine_out->freq_buffer);
+
+    // go back to time domain
+    engine_out->synthesis(buffer_out);
 
     // Push new samples to the output file
     push_new_samples(buffer_out);

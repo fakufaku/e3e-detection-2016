@@ -63,6 +63,7 @@ GSC::GSC(
   // with real/imag parts interleaved i.e. [r0, i0, r1, i1, r2,  ...]
   // in row-major order
   std::vector<float> w = j_weights.at("fixed_weights").get<std::vector<float>>();
+  std::cout << "size w: " << (int)w.size() << " size fft: " << 2 * (this->nfft / 2 + 1) * this->nchannel << std::endl;
   assert((int)w.size() == 2 * (this->nfft / 2 + 1) * this->nchannel);  // check the size is correct
   this->fixed_weights.setZero(this->nchannel, this->nfreq);
   for (int f = 0, offset = this->f_min_index * this->nchannel ; f < this->nfreq ; f++, offset += this->nchannel)
